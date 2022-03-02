@@ -10,6 +10,7 @@ from sklearn.model_selection import KFold, train_test_split
 import pandas as pd
 from sklearn.utils import shuffle
 
+import tensorflow as tf
 
 def bit2attr(bitstr) -> list:
     attr_vec = list()
@@ -35,7 +36,7 @@ Large_MRE = []
 1) 数据预处理
 '''
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/descriptor/0209/descriptor_train.csv'
+filepath = 'data/database/22-01-29-descriptor-train.csv'
 
 data = pd.read_csv(filepath, encoding='gb18030')
 print(data.shape)
@@ -44,8 +45,8 @@ data = data.dropna()
 print(data.shape)
 data = shuffle(data)
 
-data_x_df = pd.DataFrame(data.iloc[:, :-1])
-data_y_df = pd.DataFrame(data.iloc[:, -1])
+data_x_df = data.drop(['label'], axis=1)
+data_y_df = data[['label']]
 
 # 归一化
 min_max_scaler_X = MinMaxScaler()
@@ -56,12 +57,12 @@ min_max_scaler_y = MinMaxScaler()
 min_max_scaler_y.fit(data_y_df)
 y_trans1 = min_max_scaler_y.transform(data_y_df)
 
-test_filepath = "data/descriptor/0301/descriptor_test_0301.csv"
+test_filepath = "data/database/22-01-29-descriptor-test-level-1.csv"
 test_data = pd.read_csv(test_filepath, encoding='gb18030')
 print('test data: ', test_data.shape)
 
-test_data_x_df = pd.DataFrame(test_data.iloc[:, :-1])
-test_data_y_df = pd.DataFrame(test_data.iloc[:, -1])
+test_data_x_df = test_data.drop(['label'], axis=1)
+test_data_y_df = test_data[['label']]
 x_trans1_test = min_max_scaler_X.transform(test_data_x_df)
 y_trans1_test = min_max_scaler_y.transform(test_data_y_df)
 
@@ -70,7 +71,7 @@ y_trans1_test = min_max_scaler_y.transform(test_data_y_df)
 '''
 
 from keras.layers import MaxPooling1D, Conv1D, Dense, Flatten, Dropout
-from keras import models
+from keras import models, regularizers
 from keras.optimizers import Adam, RMSprop, SGD
 
 def buildModel():
@@ -96,6 +97,12 @@ def buildModel():
 
     return model
 
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
+
 '''
 4) 训练模型
 '''
@@ -114,8 +121,9 @@ out_y_pred = []
 X_train = x_trans1
 y_train = y_trans1
 
+callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
 model_mlp = buildModel()
-model_mlp.fit(X_train, y_train, epochs=120, verbose=1)
+model_mlp.fit(X_train, y_train, epochs=2000, verbose=1, callbacks=[callback])
 
 # 外部验证
 X_test = x_trans1_test

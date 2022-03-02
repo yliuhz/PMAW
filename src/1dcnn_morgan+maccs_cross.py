@@ -13,6 +13,8 @@ from time import sleep
 from sklearn.model_selection import KFold
 from base import bit2attr
 
+import tensorflow as tf
+
 # def bit2attr(bitstr) -> list:
 #     attr_vec = list()
 #     for i in range(len(bitstr)):
@@ -44,16 +46,16 @@ def read_bit(filepath):
     with open(filepath, 'r', encoding='gb18030') as f:
         reader = csv.reader(f)
         for row in islice(reader, 1, None):
-            temp0 = bit2attr(row[0])
-            temp0 = temp0 + bit2attr(row[1])
+            temp0 = bit2attr(row[1])
+            temp0 = temp0 + bit2attr(row[2])
 
-            temp = row[2].split(' ')
+            temp = row[3].strip().split(' ')
             temp = [int(x) for x in temp]
             bits_1 = [0 for x in range(NUM_ATTR)]
             for t in temp:
                 bits_1[t] = 1
 
-            temp = row[3].split(' ')
+            temp = row[4].strip().split(' ')
             temp = [int(x) for x in temp]
 
             bits_2 = [0 for x in range(NUM_ATTR)]
@@ -63,7 +65,7 @@ def read_bit(filepath):
             bits = bits_1 + bits_2
 
             temp = bits
-            temp.append(float(row[4]))
+            temp.append(float(row[0]))
 
             temp = temp0 + temp
 
@@ -78,7 +80,7 @@ def read_bit(filepath):
     return [data_x_df, data_y_df]
 
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/fp/sjn/0209/morgan+maccs_train.csv'
+filepath = 'data/database/22-01-29-morgan-maccs-train.csv'
 # data_x = pd.DataFrame(columns=[str(i) for i in range(NUM_ATTR)])
 # test_filepath = "data/fp/sjn/01-15-morgan-test-2.csv"
 
@@ -112,7 +114,7 @@ def buildModel():
     l4 = MaxPooling1D(2, 2)
     l5 = Flatten()
     l6 = Dense(120, activation='relu')
-    # l7 = Dropout(0.5)
+    l7 = Dropout(0.1)
     l8 = Dense(84, activation='relu')
     l9 = Dense(1, activation='linear')
 
@@ -124,6 +126,12 @@ def buildModel():
     model.compile(optimizer=adam, loss='logcosh', metrics=['mae'])
 
     return model
+
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
 
 '''
 4) 训练模型
@@ -170,8 +178,9 @@ for i in range(10):
         # sleep(5)
 
         ## Initial: 400 200 100
+        callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
         model_mlp = buildModel()
-        model_mlp.fit(X_train, y_train, epochs=120, validation_data=(X_test, y_test), verbose=1)
+        model_mlp.fit(X_train, y_train, epochs=2000, validation_data=(X_test, y_test), verbose=1, callbacks=[callback])
 
         print(model_mlp.summary())
 

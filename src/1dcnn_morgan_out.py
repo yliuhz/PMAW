@@ -12,6 +12,8 @@ from sklearn.utils import shuffle
 from time import sleep
 from base import bit2attr
 
+import tensorflow as tf
+
 # def bit2attr(bitstr) -> list:
 #     attr_vec = list()
 #     for i in range(len(bitstr)):
@@ -47,17 +49,17 @@ def read_bit(filepath):
         for row in islice(reader, 1, None):  # 不跳过第一行 # for row in islice(reader, 1, None):  # 跳过第一行
             if len(row) == 0:
                 continue
-            num_attr = len(row[0])
+            num_attr = len(row[1])
             # print('num_attrs: ', num_attr)
             assert num_attr == NUM_ATTR
-            num_attr = len(row[1])
+            num_attr = len(row[2])
             # print('num_attrs_2: ', num_attr)
             assert num_attr == NUM_ATTR
             # data_x.append(bit2attr(row[0]), ignore_index=True)
             # data_y.append([int(row[1])], ignore_index=True)
-            temp = bit2attr(row[0])
-            temp = temp + bit2attr(row[1])
-            temp.append(float(row[2]))
+            temp = bit2attr(row[1])
+            temp = temp + bit2attr(row[2])
+            temp.append(float(row[0]))
             data.append(temp)
 
     # random.shuffle(data) # 不打乱数据
@@ -71,9 +73,9 @@ def read_bit(filepath):
     return data
 
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/fp/sjn/0209/morgan_train.csv'
+filepath = 'data/database/22-01-29-morgan-train.csv'
 # data_x = pd.DataFrame(columns=[str(i) for i in range(NUM_ATTR)])
-test_filepath = "data/fp/sjn/0318/03-18-morgan-test.csv"
+test_filepath = "data/database/22-01-29-morgan-test-level-1.csv"
 
 # [data_x_df, data_y_df] = read_bit(filepath)
 data = read_bit(filepath)
@@ -86,11 +88,13 @@ min_max_scaler_X = MinMaxScaler()
 min_max_scaler_X.fit(data_x_df)
 x_trans1 = min_max_scaler_X.transform(data_x_df)
 x_trans1 = np.reshape(x_trans1, (x_trans1.shape[0], x_trans1.shape[1], 1))
+# x_trans1 = np.reshape(x_trans1, (x_trans1.shape[0], x_trans1.shape[1]))
 
 min_max_scaler_y = MinMaxScaler()
 min_max_scaler_y.fit(data_y_df)
 y_trans1 = min_max_scaler_y.transform(data_y_df)
-y_trans1 = np.reshape(y_trans1, (y_trans1.shape[0], 1, 1))
+# y_trans1 = np.reshape(y_trans1, (y_trans1.shape[0], 1, 1))
+y_trans1 = np.reshape(y_trans1, (y_trans1.shape[0], 1))
 
 # [test_data_x_df, test_data_y_df] = read_bit(test_filepath)
 test_data = read_bit(test_filepath)
@@ -100,10 +104,13 @@ test_data_y_df = pd.DataFrame(test_data.iloc[:, -1])
 x_trans1_test = min_max_scaler_X.transform(test_data_x_df)
 y_trans1_test = min_max_scaler_y.transform(test_data_y_df)
 x_trans1_test = np.reshape(x_trans1_test, (x_trans1_test.shape[0], x_trans1_test.shape[1], 1))
-y_trans1_test = np.reshape(y_trans1_test, (y_trans1_test.shape[0], 1, 1))
+# y_trans1_test = np.reshape(y_trans1_test, (y_trans1_test.shape[0], 1, 1))
+y_trans1_test = np.reshape(y_trans1_test, (y_trans1_test.shape[0], 1))
 
-print(data_x_df.shape, data_y_df.shape)
-print(test_data_x_df.shape, test_data_y_df.shape)
+# print(data_x_df.shape, data_y_df.shape)
+# print(test_data_x_df.shape, test_data_y_df.shape)
+print(x_trans1.shape, y_trans1.shape)
+print(x_trans1_test.shape, y_trans1_test.shape)
 sleep(5)
 
 '''
@@ -117,9 +124,9 @@ from keras.optimizers import Adam, RMSprop, SGD
 def buildModel():
     model = models.Sequential()
 
-    l1 = Conv1D(6, 25, 1, activation='relu', use_bias=True, padding='same')
+    l1 = Conv1D(6, 25, strides=1, activation='relu', use_bias=True, padding='same')
     l2 = MaxPooling1D(2, 2)
-    l3 = Conv1D(16, 25, 1, activation='relu', use_bias=True, padding='same')
+    l3 = Conv1D(16, 25, strides=1, activation='relu', use_bias=True, padding='same')
     l4 = MaxPooling1D(2, 2)
     l5 = Flatten()
     l6 = Dense(120, activation='relu')
@@ -135,6 +142,12 @@ def buildModel():
     model.compile(optimizer=adam, loss='logcosh', metrics=['mae'])
 
     return model
+
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
 
 '''
 4) 训练模型
@@ -154,8 +167,9 @@ out_y_pred = []
 X_train = x_trans1
 y_train = y_trans1
 
+callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
 model_mlp = buildModel()
-model_mlp.fit(X_train, y_train, epochs=120, verbose=1)
+model_mlp.fit(X_train, y_train, epochs=2000, verbose=1, callbacks=[callback])
 
 print(model_mlp.summary())
 sleep(5)

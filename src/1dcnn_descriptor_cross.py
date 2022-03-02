@@ -12,6 +12,8 @@ from sklearn.utils import shuffle
 from time import sleep
 from sklearn.model_selection import KFold
 
+import tensorflow as tf
+
 def bit2attr(bitstr) -> list:
     attr_vec = list()
     for i in range(len(bitstr)):
@@ -36,17 +38,19 @@ Large_MRE = []
 1) 数据预处理
 '''
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/descriptor/0209/descriptor_train.csv'
+filepath = 'data/database/22-01-29-descriptor-train.csv'
 
-data = pd.read_csv(filepath, encoding='gbk')
+data = pd.read_csv(filepath, encoding='gb18030').astype(float)
 print(data.shape)
 data = data.dropna()
 
 print(data.shape)
 data = shuffle(data)
 
-data_x_df = pd.DataFrame(data.iloc[:, :-1])
-data_y_df = pd.DataFrame(data.iloc[:, -1])
+# data_x_df = pd.DataFrame(data.iloc[:, :-1])
+# data_y_df = pd.DataFrame(data.iloc[:, -1])
+data_x_df = data.drop(['label'], axis=1)
+data_y_df = data[['label']]
 
 # 归一化
 min_max_scaler_X = MinMaxScaler()
@@ -57,7 +61,8 @@ x_trans1 = np.reshape(x_trans1, (x_trans1.shape[0], x_trans1.shape[1], 1))
 min_max_scaler_y = MinMaxScaler()
 min_max_scaler_y.fit(data_y_df)
 y_trans1 = min_max_scaler_y.transform(data_y_df)
-y_trans1 = np.reshape(y_trans1, (y_trans1.shape[0], 1, 1))
+# y_trans1 = np.reshape(y_trans1, (y_trans1.shape[0], 1, 1))
+y_trans1 = np.reshape(y_trans1, (y_trans1.shape[0], 1))
 
 # test_filepath = "data/descriptor/01-15-descriptor-test.csv"
 # test_data = pd.read_csv(test_filepath, encoding='gbk')
@@ -76,15 +81,15 @@ y_trans1 = np.reshape(y_trans1, (y_trans1.shape[0], 1, 1))
 
 from keras.layers import MaxPooling1D, Conv1D, Dense, Flatten, Dropout, BatchNormalization
 from keras import models
-from keras.optimizers import Adam, RMSprop, SGD
+from tensorflow.keras.optimizers import Adam, RMSprop, SGD
 
 def buildModel():
     model = models.Sequential()
 
-    l1 = Conv1D(6, 25, 1, activation='relu', use_bias=True, padding='same')
-    l2 = MaxPooling1D(2, 2)
-    l3 = Conv1D(16, 25, 1, activation='relu', use_bias=True, padding='same')
-    l4 = MaxPooling1D(2, 2)
+    l1 = Conv1D(6, 25, strides=1, activation='relu', use_bias=True, padding='same')
+    l2 = MaxPooling1D(2, strides=2)
+    l3 = Conv1D(16, 25, strides=1, activation='relu', use_bias=True, padding='same')
+    l4 = MaxPooling1D(2, strides=2)
     l5 = Flatten()
     l6 = Dense(120, activation='relu')
     l7 = Dropout(rate=0.1)
@@ -99,6 +104,12 @@ def buildModel():
     model.compile(optimizer=adam, loss='logcosh', metrics=['mae'])
 
     return model
+
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
 
 '''
 4) 训练模型
@@ -145,8 +156,9 @@ for i in range(10):
         # sleep(5)
 
         ## Initial: 400 200 100
+        callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
         model_mlp = buildModel()
-        model_mlp.fit(X_train, y_train, epochs=120, validation_data=(X_test, y_test), verbose=1)
+        model_mlp.fit(X_train, y_train, epochs=2000, validation_data=(X_test, y_test), verbose=1, callbacks=[callback])
 
         print(model_mlp.summary())
 

@@ -11,6 +11,8 @@ import pandas as pd
 from sklearn.utils import shuffle
 from time import sleep
 
+import tensorflow as tf
+
 def bit2attr(bitstr) -> list:
     attr_vec = list()
     for i in range(len(bitstr)):
@@ -35,17 +37,17 @@ Large_MRE = []
 1) 数据预处理
 '''
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/descriptor/0209/descriptor_train.csv'
+filepath = 'data/database/22-01-29-descriptor-train.csv'
 
-data = pd.read_csv(filepath, encoding='gbk')
+data = pd.read_csv(filepath, encoding='gb18030')
 print(data.shape)
 data = data.dropna()
 
 print(data.shape)
 data = shuffle(data)
 
-data_x_df = pd.DataFrame(data.iloc[:, :-1])
-data_y_df = pd.DataFrame(data.iloc[:, -1])
+data_x_df = data.drop(['label'], axis=1)
+data_y_df = data[['label']]
 
 # 归一化
 min_max_scaler_X = MinMaxScaler()
@@ -58,22 +60,25 @@ min_max_scaler_y.fit(data_y_df)
 y_trans1 = min_max_scaler_y.transform(data_y_df)
 y_trans1 = np.reshape(y_trans1, (y_trans1.shape[0], 1, 1))
 
-test_filepath = "data/descriptor/0301/descriptor_test_0301.csv"
-test_data = pd.read_csv(test_filepath, encoding='gbk')
+test_filepath = "data/database/22-01-29-descriptor-test-level-1.csv"
+test_data = pd.read_csv(test_filepath, encoding='gb18030')
 print('test data: ', test_data.shape)
 
-test_data_x_df = pd.DataFrame(test_data.iloc[:, :-1])
-test_data_y_df = pd.DataFrame(test_data.iloc[:, -1])
+test_data_x_df = test_data.drop(['label'], axis=1)
+test_data_y_df = test_data[['label']]
 x_trans1_test = min_max_scaler_X.transform(test_data_x_df)
 y_trans1_test = min_max_scaler_y.transform(test_data_y_df)
 x_trans1_test = np.reshape(x_trans1_test, (x_trans1_test.shape[0], x_trans1_test.shape[1], 1))
 y_trans1_test = np.reshape(y_trans1_test, (y_trans1_test.shape[0], 1, 1))
 
+print(x_trans1.shape, y_trans1.shape)
+print(x_trans1_test.shape, y_trans1_test.shape)
+
 '''
 3) 构建模型
 '''
 
-from keras.layers import MaxPooling1D, Conv1D, Dense, Flatten, Dropout, BatchNormalization
+from keras.layers import MaxPooling1D, Conv1D, Dense, Flatten, Dropout, BatchNormalization, LayerNormalization
 from keras import models
 from keras.optimizers import Adam, RMSprop, SGD
 
@@ -82,22 +87,33 @@ def buildModel():
 
     l1 = Conv1D(6, 25, 1, activation='relu', use_bias=True, padding='same')
     l2 = MaxPooling1D(2, 2)
-    l3 = Conv1D(16, 25, 1, activation='relu', use_bias=True, padding='same')
-    l4 = MaxPooling1D(2, 2)
-    l5 = Flatten()
-    l6 = Dense(120, activation='relu')
-    l7 = Dropout(rate=0.1)
-    l8 = Dense(84, activation='relu')
-    l9 = Dense(1, activation='linear')
+    l3 = BatchNormalization(axis=-1)
+    l4 = Conv1D(16, 25, 1, activation='relu', use_bias=True, padding='same')
+    l5 = MaxPooling1D(2, 2)
+    l6 = BatchNormalization(axis=-1)
+    l7 = Flatten()
+    l8 = Dense(120, activation='relu')
+    l9 = Dropout(rate=0.1)
+    l10 = BatchNormalization(axis=-1)
+    l11 = LayerNormalization(axis=-1)
+    l12 = Dense(84, activation='relu')
+    l13 = Dense(1, activation='linear')
 
-    layers = [l1, l2, l3, l4, l5, l6, l7, l8, l9]
+    layers = [l1, l2, l4, l5, l7, l8, l9, l12, l13]
     for i in range(len(layers)):
         model.add(layers[i])
 
     adam = Adam(lr=1e-3)
-    model.compile(optimizer=adam, loss='logcosh', metrics=['mae'])
+    model.compile(optimizer=adam, loss='logcosh', metrics=['mae', 'mape'])
 
     return model
+
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
+
 
 '''
 4) 训练模型
@@ -118,8 +134,9 @@ out_y_pred = []
 X_train = x_trans1
 y_train = y_trans1
 
+callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
 model_mlp = buildModel()
-model_mlp.fit(X_train, y_train, epochs=120, verbose=1)
+history = model_mlp.fit(X_train, y_train, epochs=2000, verbose=1, callbacks=[callback])
 
 print(model_mlp.summary())
 sleep(5)

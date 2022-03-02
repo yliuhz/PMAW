@@ -12,6 +12,9 @@ from sklearn.utils import shuffle
 from time import sleep
 from sklearn.model_selection import KFold
 
+import tensorflow as tf
+
+
 # def bit2attr(bitstr) -> list:
 #     attr_vec = list()
 #     for i in range(len(bitstr)):
@@ -43,13 +46,13 @@ def read_bit(filepath):
     with open(filepath, 'r', encoding='gb18030') as f:
         reader = csv.reader(f)
         for row in islice(reader, 1, None):
-            temp = row[0].split(' ')
+            temp = row[1].strip().split(' ')
             temp = [int(x) for x in temp]
             bits_1 = [0 for x in range(NUM_ATTR)]
             for t in temp:
                 bits_1[t] = 1
 
-            temp = row[1].split(' ')
+            temp = row[2].strip().split(' ')
             temp = [int(x) for x in temp]
 
             bits_2 = [0 for x in range(NUM_ATTR)]
@@ -59,7 +62,7 @@ def read_bit(filepath):
             bits = bits_1 + bits_2
 
             temp = bits
-            temp.append(float(row[2]))
+            temp.append(float(row[0]))
 
             data.append(temp)
 
@@ -73,7 +76,7 @@ def read_bit(filepath):
     return [data_x_df, data_y_df]
 
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/fp/sjn/0209/maccs_train.csv'
+filepath = 'data/database/22-01-29-maccs-train.csv'
 # data_x = pd.DataFrame(columns=[str(i) for i in range(NUM_ATTR)])
 # test_filepath = "data/fp/sjn/01-15-morgan-test-2.csv"
 
@@ -117,6 +120,12 @@ def buildModel():
         random_state=1, tol=0.0001, verbose=False, warm_start=False)
 
     return model
+
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
 
 '''
 4) 训练模型
@@ -163,8 +172,9 @@ for i in range(10):
         # sleep(5)
 
         ## Initial: 400 200 100
+        callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
         model_mlp = buildModel()
-        model_mlp.fit(X_train, y_train, epochs=120, validation_data=(X_test, y_test), verbose=1)
+        model_mlp.fit(X_train, y_train, epochs=2000, validation_data=(X_test, y_test), verbose=1, callbacks=[callback])
         # model_mlp.fit(X_train, y_train)
         #
         # print(model_mlp.summary())
@@ -273,7 +283,7 @@ plt.text(xmin + 50, xmax - 130, errstr, fontsize=20, weight='bold')
 
 cross_result = {'Real lambda': in_y_test, 'Predicted lambda': in_y_pred}
 cross_result = pd.DataFrame(cross_result)
-cross_result.to_csv('Out/cross_result_mlp.csv', index=False, encoding='gb18030')
+cross_result.to_csv('Out/cross_result_mlp_maccs.csv', index=False, encoding='gb18030')
 
 # for i in range(len(in_y_pred)):
     # plt.scatter(in_y_test[i], in_y_pred[i], edgecolors='b')
@@ -288,9 +298,9 @@ ax = plt.gca()
 ax.tick_params(top=True, right=True)
 cbar = plt.colorbar()
 cbar.ax.tick_params(labelsize=16)
-plt.savefig('pics/descriptor-fig-mlp.png')
+plt.savefig('pics/descriptor-fig-mlp-maccs.png')
 plt.show()
 
 cross_result = {'Real lambda': in_y_train_real, 'Predicted lambda': in_y_train_pred}
 cross_result = pd.DataFrame(cross_result)
-cross_result.to_csv('Out/cross_result_mlp_train.csv', index=False, encoding='gb18030')
+cross_result.to_csv('Out/cross_result_mlp_train_maccs.csv', index=False, encoding='gb18030')

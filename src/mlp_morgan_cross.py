@@ -13,6 +13,9 @@ from time import sleep
 from sklearn.model_selection import KFold
 from base import bit2attr
 
+import tensorflow as tf
+
+
 # def bit2attr(bitstr) -> list:
 #     attr_vec = list()
 #     for i in range(len(bitstr)):
@@ -42,21 +45,21 @@ NUM_ATTR = 1024
 def read_bit(filepath):
     data = list()
     # data_y = pd.DataFrame(columns=['y'])
-    with open(filepath, 'r', encoding='gbk') as f:
+    with open(filepath, 'r', encoding='gb18030') as f:
         reader = csv.reader(f)
         num_attr = int()
         for row in islice(reader, 1, None):  # 不跳过第一行 # for row in islice(reader, 1, None):  # 跳过第一行
             if len(row) == 0:
                 continue
-            num_attr = len(row[0])
-            assert num_attr == NUM_ATTR
             num_attr = len(row[1])
+            assert num_attr == NUM_ATTR
+            num_attr = len(row[2])
             assert num_attr == NUM_ATTR
             # data_x.append(bit2attr(row[0]), ignore_index=True)
             # data_y.append([int(row[1])], ignore_index=True)
-            temp = bit2attr(row[0])
-            temp = temp + bit2attr(row[1])
-            temp.append(float(row[2]))
+            temp = bit2attr(row[1])
+            temp = temp + bit2attr(row[2])
+            temp.append(float(row[0]))
             data.append(temp)
 
     random.shuffle(data)
@@ -68,7 +71,7 @@ def read_bit(filepath):
     return [data_x_df, data_y_df]
 
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/fp/sjn/0209/morgan_train.csv'
+filepath = 'data/database/22-01-29-morgan-train.csv'
 # data_x = pd.DataFrame(columns=[str(i) for i in range(NUM_ATTR)])
 # test_filepath = "data/fp/sjn/01-15-morgan-test-2.csv"
 
@@ -104,7 +107,7 @@ def buildModel():
         model.add(layers[i])
 
     adam = Adam(lr=1e-3)
-    model.compile(optimizer=adam, loss='logcosh', metrics=['mae'])
+    model.compile(optimizer=adam, loss='logcosh', metrics=['mae', 'mape'])
 
     model_mlp = MLPRegressor(
         hidden_layer_sizes=(512, 128, 32), activation='relu', solver='lbfgs', alpha=0.0001,
@@ -112,6 +115,13 @@ def buildModel():
         random_state=1, tol=0.0001, verbose=False, warm_start=False)
 
     return model
+
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
+
 
 '''
 4) 训练模型
@@ -158,8 +168,9 @@ for i in range(10):
         # sleep(5)
 
         ## Initial: 400 200 100
+        callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
         model_mlp = buildModel()
-        model_mlp.fit(X_train, y_train, epochs=120, validation_data=(X_test, y_test), verbose=1)
+        model_mlp.fit(X_train, y_train, epochs=2000, validation_data=(X_test, y_test), verbose=1, callbacks=[callback])
         # model_mlp.fit(X_train, y_train)
         #
         # print(model_mlp.summary())
@@ -270,7 +281,7 @@ plt.text(xmin + 50, xmax - 130, errstr, fontsize=20, weight='bold')
 
 cross_result = {'Real lambda': in_y_test, 'Predicted lambda': in_y_pred}
 cross_result = pd.DataFrame(cross_result)
-cross_result.to_csv('Out/cross_result_mlp.csv', index=False, encoding='gb18030')
+cross_result.to_csv('Out/cross_result_mlp_morgan.csv', index=False, encoding='gb18030')
 
 # for i in range(len(in_y_pred)):
     # plt.scatter(in_y_test[i], in_y_pred[i], edgecolors='b')
@@ -285,9 +296,9 @@ ax = plt.gca()
 ax.tick_params(top=True, right=True)
 cbar = plt.colorbar()
 cbar.ax.tick_params(labelsize=16)
-plt.savefig('pics/descriptor-fig-mlp.png')
+plt.savefig('pics/descriptor-fig-mlp-morgan.png')
 plt.show()
 
 cross_result = {'Real lambda': in_y_train_real, 'Predicted lambda': in_y_train_pred}
 cross_result = pd.DataFrame(cross_result)
-cross_result.to_csv('Out/cross_result_mlp_train.csv', index=False, encoding='gb18030')
+cross_result.to_csv('Out/cross_result_mlp_morgan_train.csv', index=False, encoding='gb18030')

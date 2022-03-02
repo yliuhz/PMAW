@@ -11,6 +11,8 @@ import pandas as pd
 from sklearn.utils import shuffle
 from sklearn.model_selection import KFold
 
+import tensorflow as tf
+
 def bit2attr(bitstr) -> list:
     attr_vec = list()
     for i in range(len(bitstr)):
@@ -35,17 +37,17 @@ Large_MRE = []
 1) 数据预处理
 '''
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/descriptor/0209/descriptor_train.csv'
+filepath = 'data/database/22-01-29-descriptor-train.csv'
 
-data = pd.read_csv(filepath, encoding='gb18030')
+data = pd.read_csv(filepath, encoding='gb18030').astype(float)
 print(data.shape)
 data = data.dropna()
 
 print(data.shape)
 data = shuffle(data)
 
-data_x_df = pd.DataFrame(data.iloc[:, :-1])
-data_y_df = pd.DataFrame(data.iloc[:, -1])
+data_x_df = data.drop(['label'], axis=1)
+data_y_df = data[['label']]
 
 # 归一化
 min_max_scaler_X = MinMaxScaler()
@@ -86,6 +88,12 @@ def buildModel():
         random_state=1, tol=0.0001, verbose=False, warm_start=False)
 
     return model
+
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
 
 '''
 4) 训练模型
@@ -132,8 +140,9 @@ for i in range(10):
         # sleep(5)
 
         ## Initial: 400 200 100
+        callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
         model_mlp = buildModel()
-        model_mlp.fit(X_train, y_train, epochs=120, validation_data=(X_test, y_test), verbose=1)
+        model_mlp.fit(X_train, y_train, epochs=2000, validation_data=(X_test, y_test), verbose=1, callbacks=[callback])
         # model_mlp.fit(X_train, y_train)
         #
         # print(model_mlp.summary())

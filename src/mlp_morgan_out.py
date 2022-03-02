@@ -12,6 +12,9 @@ from sklearn.utils import shuffle
 from time import sleep
 from base import bit2attr
 
+import tensorflow as tf
+
+
 # def bit2attr(bitstr) -> list:
 #     attr_vec = list()
 #     for i in range(len(bitstr)):
@@ -47,15 +50,15 @@ def read_bit(filepath):
         for row in islice(reader, 1, None):  # 不跳过第一行 # for row in islice(reader, 1, None):  # 跳过第一行
             if len(row) == 0:
                 continue
-            num_attr = len(row[0])
-            assert num_attr == NUM_ATTR
             num_attr = len(row[1])
+            assert num_attr == NUM_ATTR
+            num_attr = len(row[2])
             assert num_attr == NUM_ATTR
             # data_x.append(bit2attr(row[0]), ignore_index=True)
             # data_y.append([int(row[1])], ignore_index=True)
-            temp = bit2attr(row[0])
-            temp = temp + bit2attr(row[1])
-            temp.append(float(row[2]))
+            temp = bit2attr(row[1])
+            temp = temp + bit2attr(row[2])
+            temp.append(float(row[0]))
             data.append(temp)
 
     # random.shuffle(data) # 不打乱数据
@@ -69,9 +72,9 @@ def read_bit(filepath):
     return data
 
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/fp/sjn/0209/morgan_train.csv'
+filepath = 'data/database/22-01-29-morgan-train.csv'
 # data_x = pd.DataFrame(columns=[str(i) for i in range(NUM_ATTR)])
-test_filepath = "data/fp/sjn/0318/03-18-morgan-test.csv"
+test_filepath = "data/database/22-01-29-morgan-test-level-1.csv"
 
 # [data_x_df, data_y_df] = read_bit(filepath)
 data = read_bit(filepath)
@@ -104,7 +107,7 @@ sleep(5)
 3) 构建模型
 '''
 
-from keras.layers import MaxPooling1D, Conv1D, Dense, Flatten
+from keras.layers import MaxPooling1D, Conv1D, Dense, Flatten, Dropout
 from keras import models
 from keras.optimizers import Adam, RMSprop, SGD
 
@@ -112,11 +115,12 @@ def buildModel():
     model = models.Sequential()
 
     l5 = Dense(512, activation='relu')
-    l6 = Dense(128, activation='relu')
-    l7 = Dense(30, activation='relu')
-    l8 = Dense(1)
+    l6 = Dropout(rate=0.2)
+    l7 = Dense(128, activation='relu')
+    l8 = Dense(30, activation='relu')
+    l9 = Dense(1)
 
-    layers = [l5, l6, l7, l8]
+    layers = [l5, l6, l7, l8, l9]
     for i in range(len(layers)):
         model.add(layers[i])
 
@@ -129,6 +133,13 @@ def buildModel():
         random_state=1, tol=0.0001, verbose=False, warm_start=False)
 
     return model
+
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
+
 
 '''
 4) 训练模型
@@ -148,8 +159,9 @@ out_y_pred = []
 X_train = x_trans1
 y_train = y_trans1
 
+callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
 model_mlp = buildModel()
-model_mlp.fit(X_train, y_train, epochs=120, verbose=1)
+model_mlp.fit(X_train, y_train, epochs=2000, verbose=1, callbacks=[callback])
 
 # 外部验证
 X_test = x_trans1_test

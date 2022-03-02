@@ -11,6 +11,9 @@ import pandas as pd
 from sklearn.utils import shuffle
 from time import sleep
 
+import tensorflow as tf
+
+
 # def bit2attr(bitstr) -> list:
 #     attr_vec = list()
 #     for i in range(len(bitstr)):
@@ -42,13 +45,13 @@ def read_bit(filepath):
     with open(filepath, 'r', encoding='gb18030') as f:
         reader = csv.reader(f)
         for row in islice(reader, 1, None):
-            temp = row[0].split(' ')
+            temp = row[1].strip().split(' ')
             temp = [int(x) for x in temp]
             bits_1 = [0 for x in range(NUM_ATTR)]
             for t in temp:
                 bits_1[t] = 1
 
-            temp = row[1].split(' ')
+            temp = row[2].strip().split(' ')
             temp = [int(x) for x in temp]
 
             bits_2 = [0 for x in range(NUM_ATTR)]
@@ -58,7 +61,7 @@ def read_bit(filepath):
             bits = bits_1 + bits_2
 
             temp = bits
-            temp.append(float(row[2]))
+            temp.append(float(row[0]))
 
             data.append(temp)
     data = np.array(data)
@@ -66,9 +69,9 @@ def read_bit(filepath):
     return data
 
 # filepath = 'data/fp/sjn/R+B+Cmorgan_fp1202.csv'
-filepath = 'data/fp/sjn/0209/maccs_train.csv'
+filepath = 'data/database/22-01-29-maccs-train.csv'
 # data_x = pd.DataFrame(columns=[str(i) for i in range(NUM_ATTR)])
-test_filepath = "data/fp/sjn/0210/maccs_test_level_2.csv"
+test_filepath = "data/database/22-01-29-maccs-test-level-1.csv"
 
 # [data_x_df, data_y_df] = read_bit(filepath)
 data = read_bit(filepath)
@@ -101,7 +104,7 @@ sleep(5)
 3) 构建模型
 '''
 
-from keras.layers import MaxPooling1D, Conv1D, Dense, Flatten
+from keras.layers import MaxPooling1D, Conv1D, Dense, Flatten, Dropout
 from keras import models
 from keras.optimizers import Adam, RMSprop, SGD
 
@@ -109,16 +112,17 @@ def buildModel():
     model = models.Sequential()
 
     l5 = Dense(512, activation='relu')
-    l6 = Dense(128, activation='relu')
-    l7 = Dense(30, activation='relu')
-    l8 = Dense(1)
+    l6 = Dropout(rate=0.2)
+    l7 = Dense(128, activation='relu')
+    l8 = Dense(30, activation='relu')
+    l9 = Dense(1)
 
-    layers = [l5, l6, l7, l8]
+    layers = [l5, l6, l7, l8, l9]
     for i in range(len(layers)):
         model.add(layers[i])
 
     adam = Adam(lr=1e-3)
-    model.compile(optimizer=adam, loss='logcosh', metrics=['mae'])
+    model.compile(optimizer=adam, loss='logcosh', metrics=['mae', 'mape'])
 
     model_mlp = MLPRegressor(
         hidden_layer_sizes=(512, 128, 32), activation='relu', solver='lbfgs', alpha=0.0001,
@@ -126,6 +130,13 @@ def buildModel():
         random_state=1, tol=0.0001, verbose=False, warm_start=False)
 
     return model
+
+def scheduler(epoch, lr):
+    if epoch > 0 and epoch % 500 == 0:
+        return lr * 0.1
+    else:
+        return lr
+
 
 '''
 4) 训练模型
@@ -145,8 +156,9 @@ out_y_pred = []
 X_train = x_trans1
 y_train = y_trans1
 
+callback = tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1)
 model_mlp = buildModel()
-model_mlp.fit(X_train, y_train, epochs=120, verbose=1)
+model_mlp.fit(X_train, y_train, epochs=2000, verbose=1, callbacks=[callback])
 
 # 外部验证
 X_test = x_trans1_test
