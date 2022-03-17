@@ -3,7 +3,7 @@ Source code of the paper "Prediction of Molecular Absorption Wavelength Using De
 
 **Jinning Shao<sup>1</sup>, Yue Liu<sup>1</sup>, Jiaqi Yan<sup>1</sup>, Ze-Yi Yan, Yangyang Wu, Zhongying Ru, Jia-Yu Liao\*, Xiaoye Miao\*, Linghui Qian\***
 
-![](pics/exp.png){:height="60%" width="60%"}
+<img src="pics/exp.png" width="60%" height="60%">
 
 ## Installation
 For GCN and AttentiveFP, 
