@@ -33,7 +33,7 @@ The inference result will be put in /src/Out/Large_MRE_out_points.csv
 **Tips:** You may use mlp_descriptor_out.py for descriptor datasets, and et cetera.
 
 ## Train your own data
-Suppose you hace put the morgan data in /src/data/database. You should modify the data path [here](https://github.com/yliuhz/PMAW/blob/59f0ad91d6ac8f2ab27dc7d12cbdf5c198be1246/src/mlp_morgan_out.py#L75). Besides, you may add your codes for saving the model weights [here](https://github.com/yliuhz/PMAW/blob/59f0ad91d6ac8f2ab27dc7d12cbdf5c198be1246/src/mlp_morgan_out.py#L165). 
+Suppose you hace put the morgan training data in /src/data/database. You should modify the data path [here](https://github.com/yliuhz/PMAW/blob/59f0ad91d6ac8f2ab27dc7d12cbdf5c198be1246/src/mlp_morgan_out.py#L75). Besides, you may add your codes to save the model weights [here](https://github.com/yliuhz/PMAW/blob/59f0ad91d6ac8f2ab27dc7d12cbdf5c198be1246/src/mlp_morgan_out.py#L165). 
 
 
 
