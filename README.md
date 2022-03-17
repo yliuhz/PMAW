@@ -3,7 +3,7 @@ Source code of the paper "Prediction of Molecular Absorption Wavelength Using De
 
 **Jinning Shao<sup>1</sup>, Yue Liu<sup>1</sup>, Jiaqi Yan<sup>1</sup>, Ze-Yi Yan, Yangyang Wu, Zhongying Ru, Jia-Yu Liao\*, Xiaoye Miao\*, Linghui Qian\***
 
-![](pics/exp.png)
+![](pics/exp.png){:height="60%" width="60%"}
 
 ## Installation
 For GCN and AttentiveFP, 
@@ -16,7 +16,7 @@ For other models (FCNN, CNN, Chemfluo),
 conda install --yes --file molfp_requirements.txt
 ```
 
-## Prepare data (#1.1)
+## Prepare data
 Make sure your data format belongs to \{descriptor, morgan, maccs, smiles and morgan+maccs\}. In all formats, the first column should denote the true absorption wavelengths. For more details, please refer to our data in [](https://github.com/yliuhz/PMAW/tree/main/src/data/database). 
 
 
