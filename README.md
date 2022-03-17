@@ -17,13 +17,13 @@ conda install --yes --file molfp_requirements.txt
 ```
 
 ## Prepare data
-Make sure your data format belongs to \{descriptor, morgan, maccs, smiles and morgan+maccs\}. In all formats, the first column should denote the true absorption wavelengths. For more details, please refer to our data in [](https://github.com/yliuhz/PMAW/tree/main/src/data/database). 
+Make sure your data format belongs to \{descriptor, morgan, maccs, smiles and morgan+maccs\}. In all formats, the first column should denote the true absorption wavelengths. For more details, please refer to our [data](https://github.com/yliuhz/PMAW/tree/main/src/data/database). 
 
 
 ## Inference
-We didn't prepare the model weights here, since the model is lightweight and easy to train. You can now put arbitrary values in the first column. Suppose you have put the morgan data in /src/data/database. 
+We didn't prepare the model weights here, since the model is lightweight and easy to train. You can now put arbitrary values in the first column of data. Suppose you have put the morgan data in /src/data/database. 
 First, you should modify the data path [here](https://github.com/yliuhz/PMAW/blob/59f0ad91d6ac8f2ab27dc7d12cbdf5c198be1246/src/mlp_morgan_out.py#L77);
-Then, run 
+Then run 
 ```
 python /src/mlp_morgan_out.py 
 ```
